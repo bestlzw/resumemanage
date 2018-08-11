@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+	xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+	xmlns:context="http://www.springframework.org/schema/context"
+	xmlns:p="http://www.springframework.org/schema/p"
+	xmlns:aop="http://www.springframework.org/schema/aop"
+	xmlns:tx="http://www.springframework.org/schema/tx"
+	xmlns:task="http://www.springframework.org/schema/task"
+	xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans-4.2.xsd
+    http://www.springframework.org/schema/context 
+    http://www.springframework.org/schema/context/spring-context-4.2.xsd 
+    http://www.springframework.org/schema/aop 
+    http://www.springframework.org/schema/aop/spring-aop-4.0.xsd 
+    http://www.springframework.org/schema/tx 
+    http://www.springframework.org/schema/tx/spring-tx-4.0.xsd 
+     http://www.springframework.org/schema/task 
+     http://www.springframework.org/schema/task/spring-task.xsd">
+
+	<!-- 说明：下面有的Bean配置提供了多种方案，请根据需要采用某一种（别忘了注释掉其他同类方案） -->
+
+	<!-- 自动扫描Spring注解配置 -->
+	<context:component-scan
+		base-package="com.service" />
+
+	<!-- 自动加载属性配置文件 -->
+	<context:property-placeholder
+		location="classpath:jdbc.properties" />
+	<!--***************************** 数据源1*********************************************** -->
+	<!-- 配置数据源：方法一，使用C3P0方式（推荐） -->
+	<bean id="dataSource"
+		class="com.mchange.v2.c3p0.ComboPooledDataSource"
+		destroy-method="close">
+		<property name="driverClass" value="${jdbc.driverClassName}" />
+		<property name="jdbcUrl" value="${jdbc.url}" />
+		<property name="user" value="${jdbc.username}" />
+		<property name="password" value="${jdbc.password}" />
+	</bean>
+
+
+	<!-- 配置MyBatis工厂SqlSessionFactory spring与mybatis完美整合不在配置mybatis配置文件 -->
+	<bean id="sqlSessionFactory"
+		class="org.mybatis.spring.SqlSessionFactoryBean">
+		<!--注入数据源 -->
+		<property name="dataSource" ref="dataSource" />
+		<!--指定MyBatis mapper.xml位置 -->
+		<property name="mapperLocations"
+			value="classpath:com/dao/*.xml" />
+		<!--配置分页 -->
+		<property name="plugins">
+			<array>
+				<bean class="com.github.pagehelper.PageInterceptor">
+					<property name="properties">
+						<value>
+							helperDialect=mysql
+						</value>
+					</property>
+				</bean>
+			</array>
+		</property>
+
+		<!-- 指定po类位置 -->
+		<property name="typeAliasesPackage" value="com.entity" />
+	</bean>
+
+	<!-- 配置mapper扫描器 dao所在包的位置 -->
+	<bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+		<property name="basePackage" value="com.dao" />
+		<property name="sqlSessionFactoryBeanName"
+			value="sqlSessionFactory" />
+	</bean>
+
+	<!-- (事务管理)transaction manager, use JtaTransactionManager for global tx -->
+	<bean id="transactionManager"
+		class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+		<property name="dataSource" ref="dataSource" />
+	</bean>
+
+	<!-- 配置声明式事务：方法一，在Service实现类或者public实现方法上使用注解@Transactional，则此类或方法就会启用事务机制 -->
+	<tx:annotation-driven
+		transaction-manager="transactionManager" />
+
+</beans>
